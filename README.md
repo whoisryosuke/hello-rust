@@ -4,6 +4,12 @@ Learnings in Rust-land.
 
 > You'll need Rust installed for this, see below. Or you can try Rust online in the [Rust Playground](https://play.rust-lang.org/) without installing anything on your computer.
 
+# Quick Start
+
+1. Clone this repo.
+1. Edit entrypoint: `src\main.rs`
+1. Build and run using `CTRL + SHIFT + B`
+
 # Getting Started
 
 Check out the official [Getting started guide](http://rust-lang.org/learn/get-started).
