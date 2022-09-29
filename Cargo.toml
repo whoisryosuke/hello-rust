@@ -6,3 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+
+[[example]]
+name = "cli-basic"
+path = "examples/cli-basic/main.rs"
+
+[[example]]
+name = "cli-tutorial"
+path = "examples/cli-tutorial/main.rs"
