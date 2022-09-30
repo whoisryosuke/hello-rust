@@ -1,7 +1,10 @@
 use std::env;
 use std::process;
 
+// none of these will work for some reason?
 use super::config::Config;
+// use config::Config;
+// use crate::config::Config;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
