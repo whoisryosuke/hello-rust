@@ -1,4 +1,5 @@
 use std::env;
+use std::error::Error;
 use std::fs;
 use std::process;
 
@@ -15,13 +16,26 @@ fn main() {
     println!("In file {}", config.file_path);
 
     // Read from user's file
-    let contents = fs::read_to_string(config.file_path)
-        .expect("Couldn't read the file from the path provided");
-
-    println!("With text:\n{contents}");
+    // Run the function (and does anything inside)
+    // then checks if we return an error
+    if let Err(e) = run(config) {
+        // Got an error? Let the user know and crash app gracefully
+        println!("Application error!: {e}");
+        process::exit(1);
+    }
 
     // Run code using `cargo run --example cli-tutorial the README.md`
     // would ideally search for text "the" in the file "README.md"
+}
+
+fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    // Question mark (?) at end lets us return any errors from `fs`
+    let contents = fs::read_to_string(config.file_path)?;
+
+    println!("With text:\n{contents}");
+
+    // If we got the file, return Ok type an empty tuple (which functions usually return?)
+    Ok(())
 }
 
 struct Config {
