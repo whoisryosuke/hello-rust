@@ -11,6 +11,10 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    vec![]
+}
+
 pub struct Config {
     pub query: String,
     pub file_path: String,
@@ -26,5 +30,21 @@ impl Config {
         let query = args[1].clone();
         let file_path = args[2].clone();
         Ok(Config { query, file_path })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn one_result() {
+        let query = "duct";
+        let contents = "\
+Rust:
+safe, fast, productive.
+Pick three.";
+
+        assert_eq!(vec!["safe", "fast", "productive"], search(query, contents));
     }
 }
