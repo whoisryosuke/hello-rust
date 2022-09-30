@@ -11,7 +11,3 @@ edition = "2021"
 [[example]]
 name = "cli-basic"
 path = "examples/cli-basic/main.rs"
-
-[[example]]
-name = "cli-tutorial"
-path = "examples/cli-tutorial/main.rs"
