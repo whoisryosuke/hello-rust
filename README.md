@@ -1,6 +1,8 @@
-# Hello Rust
+# Rust CLI Tutorial
 
 Learnings in Rust-land.
+
+Followed [the tutorial in the Rust Book](https://doc.rust-lang.org/book/ch12-00-an-io-project.html) to create a basic Rust CLI to read, parse, and search text files.
 
 > You'll need Rust installed for this, see below. Or you can try Rust online in the [Rust Playground](https://play.rust-lang.org/) without installing anything on your computer.
 
@@ -8,7 +10,9 @@ Learnings in Rust-land.
 
 1. Clone this repo.
 1. Edit entrypoint: `src\main.rs`
-1. Build and run using `CTRL + SHIFT + B`
+1. Build and run using `cargo run search_term README.md`
+
+You can replace `search_term` with any string you want to find inside of a file.
 
 # Getting Started
 
