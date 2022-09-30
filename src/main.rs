@@ -1,24 +1,29 @@
-use std::io;
+use std::env;
+use std::process;
+
+use hello_rust::Config;
 
 fn main() {
-    let a = [1, 2, 3, 4, 5];
+    let args: Vec<String> = env::args().collect();
 
-    println!("Please enter an array index.");
+    // Parse CLI arguments
+    let config = Config::build(&args).unwrap_or_else(|err| {
+        println!("Problem parsing args: {err}");
+        process::exit(1);
+    });
 
-    let mut index = String::new();
+    println!("Searching for {}", config.query);
+    println!("In file {}", config.file_path);
 
-    io::stdin()
-        .read_line(&mut index)
-        .expect("Failed to read line");
+    // Read from user's file
+    // Run the function (and does anything inside)
+    // then checks if we return an error
+    if let Err(e) = hello_rust::run(config) {
+        // Got an error? Let the user know and crash app gracefully
+        println!("Application error!: {e}");
+        process::exit(1);
+    }
 
-    println!("index {index}");
-
-    let index: usize = index
-        .trim()
-        .parse()
-        .expect("Index entered was not a number");
-
-    let element = a[index];
-
-    println!("The value of the element at index {index} is: {element}");
+    // Run code using `cargo run --example cli-tutorial the README.md`
+    // would ideally search for text "the" in the file "README.md"
 }
