@@ -17,14 +17,14 @@ fn main() {
 fn handle_connection(mut stream: TcpStream) {
     // BufReader lets us read/write to stream (which we also make mutable)
     let buf_reader = BufReader::new(&mut stream);
-    //
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
+    // let http_request: Vec<_> = buf_reader
+    //     .lines()
+    //     .map(|result| result.unwrap())
+    //     .take_while(|line| !line.is_empty())
+    //     .collect();
 
-    println!("Request: {:#?}", http_request);
+    // println!("Request: {:#?}", http_request);
 
     // Should print out
     // Request: [
@@ -46,15 +46,22 @@ fn handle_connection(mut stream: TcpStream) {
     //     "Accept-Language: en-US,en;q=0.9,ja;q=0.8,pt;q=0.7",
     // ]
 
-    // The HTTP status code
-    let status_line = "HTTP/1.1 200 OK";
+    // Handle GET requests
+    if request_line == "GET / HTTP/1.1" {
+        // The HTTP status code
+        let status_line = "HTTP/1.1 200 OK";
 
-    // Read HTML file
-    let contents = std::fs::read_to_string("index.html").unwrap();
-    let length = contents.len();
+        // Read HTML file
+        let contents = std::fs::read_to_string("index.html").unwrap();
+        let length = contents.len();
 
-    // Return the HTTP status and contents
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+        // Return the HTTP status and contents
+        let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
-    stream.write_all(response.as_bytes()).unwrap();
+        println!("[SERVER] GET Request 200 OK");
+
+        stream.write_all(response.as_bytes()).unwrap();
+    } else {
+        // some other request (POST, PUT, etc)
+    }
 }
