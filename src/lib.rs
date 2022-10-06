@@ -1,66 +1,95 @@
-use std::error::Error;
-use std::fs;
+use std::{
+    sync::{mpsc, Arc, Mutex},
+    thread,
+};
 
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    // Question mark (?) at end lets us return any errors from `fs`
-    let contents = fs::read_to_string(config.file_path)?;
-
-    // Run the search function
-    // And loop through the results to print out each "match"
-    for line in search(&config.query, &contents) {
-        println!("{line}");
-    }
-
-    // If we got the file, return Ok type an empty tuple (which functions usually return?)
-    Ok(())
+// This is a limited set of available threads
+// we can access and run functions with
+pub struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Job>,
 }
 
-pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    // Storage for lines of strings that match our search term
-    let mut results = Vec::new();
+// This represents the functions we can send to the thread to execute
+// This type is derived from `std::thread::spawn` params
+type Job = Box<dyn FnOnce() + Send + 'static>;
 
-    // Go through each "line" inside the body of text
-    for line in contents.lines() {
-        // Check if the line "contains" the search term
-        if line.contains(query) {
-            // Add it to the results vector
-            results.push(line);
-        }
-    }
+impl ThreadPool {
+    /// Create a new ThreadPool.
+    ///
+    /// The size is the number of threads in the pool.
+    ///
+    /// # Panics
+    ///
+    /// The `new` function will panic if the size is zero.
+    pub fn new(size: usize) -> ThreadPool {
+        assert!(size > 0);
 
-    results
-}
+        // We create a message channel to handle transmitting jobs to threads
+        let (sender, receiver) = mpsc::channel();
 
-pub struct Config {
-    pub query: String,
-    pub file_path: String,
-}
+        // We wrap the receiver in a Mutex to ensure only 1 thread (or Worker) gets the message we send
+        let receiver = Arc::new(Mutex::new(receiver));
 
-impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
-        // Check if user passed enough args into CLI command
-        if args.len() < 3 {
-            return Err("Not enough arguments. Try `cargo run search-term path/to/file.md`");
+        // Create an empty Vec for the threads/Workers
+        let mut workers = Vec::with_capacity(size);
+
+        // Loop over the number of threads provided
+        // and create new Workers and push into Vec
+        for id in 0..size {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        let query = args[1].clone();
-        let file_path = args[2].clone();
-        Ok(Config { query, file_path })
+        // Initialize struct
+        ThreadPool { workers, sender }
+    }
+
+    /// Execute a function/closure in an available thread
+    ///
+    /// # Panics
+    ///
+    /// The message transmitter will panic if message can't be sent
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        // We create a Box to store our function on the stack
+        let job = Box::new(f);
+
+        // Then we send it to the first available thread that receives it
+        // Since all threads share the same receiver, it goes to all of them
+        // (but doesn't run job multiple times due to Mutex below)
+        self.sender.send(job).unwrap();
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// These represent threads in our "pool" or queue
+/// Each contains a unique ID and an open thread
+/// We use message channel to send a "job" to the open thread
+///
+/// # Panics
+///
+/// The receiver will panic if it can't lock - this might mean another thread has panicked.
+/// The receiver will panic if it can't receive the message - this might mean the thread has shut down.
+struct Worker {
+    id: usize,
+    thread: thread::JoinHandle<()>,
+}
 
-    #[test]
-    fn one_result() {
-        let query = "duct";
-        let contents = "\
-Rust:
-safe, fast, productive.
-Pick three.";
+impl Worker {
+    // We use Arc here to create a thread-safe pointer
+    // We use Mutex here to ensure only one Worker at a time requests a job (so we can lock it to receive a message)
+    // Our Job is technically a Receiver from the message channel
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(move || loop {
+            let job = receiver.lock().expect("The receiver can't lock - this might mean another thread has panicked.").recv().expect("The receiver can't receive the message - this might mean the thread has shut down.");
 
-        assert_eq!(vec!["safe, fast, productive."], search(query, contents));
+            println!("Worker {id} got a job; executing.");
+
+            // Run the function or "job" we originally `execute()`
+            job();
+        });
+
+        Worker { id, thread }
     }
 }
