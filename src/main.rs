@@ -46,7 +46,15 @@ fn handle_connection(mut stream: TcpStream) {
     //     "Accept-Language: en-US,en;q=0.9,ja;q=0.8,pt;q=0.7",
     // ]
 
-    let response = "HTTP/1.1 200 OK\r\n\r\n";
+    // The HTTP status code
+    let status_line = "HTTP/1.1 200 OK";
+
+    // Read HTML file
+    let contents = std::fs::read_to_string("index.html").unwrap();
+    let length = contents.len();
+
+    // Return the HTTP status and contents
+    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
     stream.write_all(response.as_bytes()).unwrap();
 }
