@@ -7,7 +7,7 @@ use std::{
 // we can access and run functions with
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: Option<mpsc::Sender<Job>>,
 }
 
 // This represents the functions we can send to the thread to execute
@@ -41,7 +41,10 @@ impl ThreadPool {
         }
 
         // Initialize struct
-        ThreadPool { workers, sender }
+        ThreadPool {
+            workers,
+            sender: Some(sender),
+        }
     }
 
     /// Execute a function/closure in an available thread
@@ -59,7 +62,24 @@ impl ThreadPool {
         // Then we send it to the first available thread that receives it
         // Since all threads share the same receiver, it goes to all of them
         // (but doesn't run job multiple times due to Mutex below)
-        self.sender.send(job).unwrap();
+        self.sender.as_ref().unwrap().send(job).unwrap();
+    }
+}
+
+// Cleanup method when app exits that closes threads
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        // Stop receiving messages
+        drop(self.sender.take());
+
+        // Loop through each worker and shut down
+        for worker in &mut self.workers {
+            println!("Shutting down worker {}", worker.id);
+
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
 
@@ -73,7 +93,7 @@ impl ThreadPool {
 /// The receiver will panic if it can't receive the message - this might mean the thread has shut down.
 struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
@@ -82,14 +102,28 @@ impl Worker {
     // Our Job is technically a Receiver from the message channel
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            let job = receiver.lock().expect("The receiver can't lock - this might mean another thread has panicked.").recv().expect("The receiver can't receive the message - this might mean the thread has shut down.");
+            let message = receiver
+                .lock()
+                .expect("The receiver can't lock - this might mean another thread has panicked.")
+                .recv();
 
-            println!("Worker {id} got a job; executing.");
+            match message {
+                Ok(job) => {
+                    println!("Worker {id} got a job; executing.");
 
-            // Run the function or "job" we originally `execute()`
-            job();
+                    // Run the function or "job" we originally `execute()`
+                    job();
+                }
+                Err(_) => {
+                    println!("Worker {id} disconnected; shutting down.");
+                    break;
+                }
+            }
         });
 
-        Worker { id, thread }
+        Worker {
+            id,
+            thread: Some(thread),
+        }
     }
 }
